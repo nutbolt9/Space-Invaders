@@ -1,0 +1,11 @@
+{
+      "name": "space-invaders",
+      "version": "1.0.0",
+      "description": "A simple Space Invaders game using HTML, CSS, and JavaScript.",
+      "scripts": {
+            "dev": "vite"
+      },
+      "devDependencies": {
+            "vite": "^4.5.5"
+      }
+}
