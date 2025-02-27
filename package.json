@@ -6,6 +6,6 @@
             "dev": "vite"
       },
       "devDependencies": {
-            "vite": "^4.5.5"
+            "vite": "6.2.0"
       }
 }
