@@ -1,32 +1,25 @@
-# Space Invaders Game
+# Space Invaders
 
-    A simple implementation of the classic Space Invaders game using HTML, CSS, and JavaScript.
+A simple implementation of the classic Space Invaders game using HTML, CSS,
+and JavaScript - no game framework, just a `<canvas>`.
 
-    ## How to Play
-    - **Move Left**: Press the `ArrowLeft` key.
-    - **Move Right**: Press the `ArrowRight` key.
-    - **Shoot**: Press the `Space` key.
+## Controls
 
-    ## Setup
+- **Left / Right arrow**: move (hold to keep moving)
+- **Space**: shoot
+- **R**: restart after a game over
 
-    1. Clone this repository (if you haven't already).
-    2. Navigate to the project directory:
-       ```sh
-       cd space-invaders
-       ```
-    3. Install dependencies:
-       ```sh
-       npm install --save-dev vite
-       ```
-    4. Start the development server:
-       ```sh
-       npm run dev
-       ```
+Shoot the invaders before they reach you. Each cleared wave spawns a faster
+one, and every invader is worth 10 points.
 
-    ## Controls
+## Run it
 
-    - **Left Arrow**: Move the player left.
-    - **Right Arrow**: Move the player right.
-    - **Space Bar**: Shoot bullets at invaders.
+```sh
+npm install
+npm run dev
+```
 
-    Enjoy playing Space Invaders!
+Then open the URL Vite prints (usually <http://localhost:5173>).
+
+`npm run build` creates a production build in `dist/`, and `npm run preview`
+serves that build locally.
