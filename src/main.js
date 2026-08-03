@@ -4,6 +4,17 @@ const ctx = canvas.getContext('2d');
 canvas.width = 800;
 canvas.height = 600;
 
+const INVADER_ROWS = 4;
+const INVADER_COLS = 10;
+const INVADER_SPACING_X = 50;
+const INVADER_SPACING_Y = 30;
+const INVADER_DROP = 20;
+
+// The simulation always advances in 1/60s steps so the game plays the same
+// on a 60Hz laptop and a 144Hz monitor.
+const STEP_MS = 1000 / 60;
+const MAX_STEPS_PER_FRAME = 5;
+
 class Player {
   constructor(x, y) {
     this.x = x;
@@ -70,23 +81,36 @@ let wave = 1;
 let gameOver = false;
 
 function createInvaders() {
+  // Centre the block instead of hanging it off the left edge.
+  const formationWidth = (INVADER_COLS - 1) * INVADER_SPACING_X + 30;
+  const originX = (canvas.width - formationWidth) / 2;
+
   invaders = [];
-  for (let row = 0; row < 4; row++) {
-    for (let col = 0; col < 10; col++) {
-      invaders.push(new Invader(col * 50 + 30, row * 30 + 30));
+  for (let row = 0; row < INVADER_ROWS; row++) {
+    for (let col = 0; col < INVADER_COLS; col++) {
+      invaders.push(
+        new Invader(originX + col * INVADER_SPACING_X, row * INVADER_SPACING_Y + 30)
+      );
     }
   }
 }
 
-function resetGame() {
-  bullets = [];
+function startWave() {
+  // Direction has to be reset with the formation, otherwise a wave cleared
+  // while marching left respawns heading left and drops a row immediately.
   invaderDirection = 1;
+  bullets = [];
+  createInvaders();
+}
+
+function resetGame() {
   invaderSpeed = 1;
   score = 0;
   wave = 1;
   gameOver = false;
+  keysDown.clear();
   player.x = canvas.width / 2 - 25;
-  createInvaders();
+  startWave();
 }
 
 function intersects(a, b) {
@@ -99,18 +123,30 @@ function intersects(a, b) {
 }
 
 function updateInvaders() {
+  if (invaders.length === 0) return;
+
   // The whole formation marches together and drops when any invader
   // touches an edge - flipping invaders individually smears the grid apart.
-  const hitEdge = invaders.some(
-    (inv) =>
-      (invaderDirection > 0 && inv.x + inv.width >= canvas.width) ||
-      (invaderDirection < 0 && inv.x <= 0)
-  );
-  if (hitEdge) {
-    invaderDirection *= -1;
-    invaders.forEach((inv) => (inv.y += 20));
-  }
   invaders.forEach((inv) => (inv.x += invaderSpeed * invaderDirection));
+
+  // Test after moving and push the overshoot back, so a fast wave can't
+  // bury its edge column outside the canvas before the flip lands.
+  let overshoot = 0;
+  if (invaderDirection > 0) {
+    const right = Math.max(...invaders.map((inv) => inv.x + inv.width));
+    if (right > canvas.width) overshoot = canvas.width - right;
+  } else {
+    const left = Math.min(...invaders.map((inv) => inv.x));
+    if (left < 0) overshoot = -left;
+  }
+
+  if (overshoot !== 0) {
+    invaderDirection *= -1;
+    invaders.forEach((inv) => {
+      inv.x += overshoot;
+      inv.y += INVADER_DROP;
+    });
+  }
 
   if (invaders.some((inv) => inv.y + inv.height >= player.y)) {
     gameOver = true;
@@ -131,8 +167,7 @@ function handleCollisions() {
   if (invaders.length === 0) {
     wave += 1;
     invaderSpeed += 0.5;
-    bullets = [];
-    createInvaders();
+    startWave();
   }
 }
 
@@ -142,8 +177,8 @@ function update() {
   if (keysDown.has('ArrowLeft')) player.moveLeft();
   if (keysDown.has('ArrowRight')) player.moveRight();
 
-  bullets = bullets.filter((bullet) => bullet.y + bullet.height > 0);
   bullets.forEach((bullet) => bullet.update());
+  bullets = bullets.filter((bullet) => bullet.y + bullet.height > 0);
 
   updateInvaders();
   handleCollisions();
@@ -175,8 +210,22 @@ function draw() {
   drawHud();
 }
 
-function gameLoop() {
-  update();
+let lastTime = performance.now();
+let accumulator = 0;
+
+function gameLoop(now) {
+  // Cap the delta so returning to a background tab doesn't fast-forward the
+  // game through every missed step at once; the floor keeps a non-monotonic
+  // clock from stalling the simulation instead.
+  const delta = Math.min(Math.max(now - lastTime, 0), STEP_MS * MAX_STEPS_PER_FRAME);
+  lastTime = now;
+  accumulator += delta;
+
+  while (accumulator >= STEP_MS) {
+    update();
+    accumulator -= STEP_MS;
+  }
+
   draw();
   requestAnimationFrame(gameLoop);
 }
@@ -200,5 +249,9 @@ document.addEventListener('keyup', (e) => {
   keysDown.delete(e.code);
 });
 
+// Losing focus mid-hold means the matching keyup never arrives and the ship
+// slides into the wall on its own.
+window.addEventListener('blur', () => keysDown.clear());
+
 createInvaders();
-gameLoop();
+requestAnimationFrame(gameLoop);
